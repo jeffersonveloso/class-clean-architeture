@@ -1,5 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import makeWASocket, { AnyMessageContent, delay, DisconnectReason, fetchLatestBaileysVersion, useSingleFileAuthState } from '@adiwajshing/baileys'
+import makeWASocket, { DisconnectReason, fetchLatestBaileysVersion, useSingleFileAuthState } from '@adiwajshing/baileys'
 import P from 'pino';
 import {
   ConnectionEntity,
