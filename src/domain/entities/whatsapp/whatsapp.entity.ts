@@ -32,5 +32,4 @@ export enum StatusTypes {
 export interface ConnectionEntity {
   webhookUrl: string;
   instanceKey: string;
-  sectionJson?: string;
 }
