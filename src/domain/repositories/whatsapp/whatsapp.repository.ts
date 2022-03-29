@@ -1,6 +1,7 @@
-import { OutputMessage } from "@baileys/domain/entities/whatsapp/whatsapp.entity";
+import { ConnectionEntity, OutputMessage } from "@bailyes/domain/entities/whatsapp/whatsapp.entity";
+import { VoidSuccess } from "@bailyes/domain/entities/response/response";
 
-abstract class WhatsappRepository {
-  public abstract startConnection(): Promise<any>;
+export abstract class WhatsappRepository {
+  public abstract startConnection(connection: ConnectionEntity): Promise<VoidSuccess>;
   public abstract sendMessage(message: OutputMessage): Promise<any>;
 }
