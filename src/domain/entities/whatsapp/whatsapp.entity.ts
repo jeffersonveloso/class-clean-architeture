@@ -50,6 +50,9 @@ export class ConnectionEntity {
 
   @ApiProperty()
   instanceKey: string;
+
+  @ApiProperty({ default: false })
+  disableWebhook: boolean;
 }
 
 class DefaultParameters {
@@ -62,18 +65,17 @@ export interface AccountInfo {
   jid: string;
 }
 
+class TextMessage {
+  @ApiProperty()
+  text: string;
+}
+
 export class OutputTextMessage extends DefaultParameters {
   @ApiProperty()
   textMessage: TextMessage;
 }
 
 //PRECISA INCLUIR OUTROS TIPOS DE RESPOSTA
-
-class TextMessage {
-  @ApiProperty()
-  text: string;
-}
-
 export class OutputReplyMessage extends DefaultParameters {
   @ApiPropertyOptional()
   participant?: string;
@@ -160,7 +162,7 @@ class ButtonsMessageContent {
   @ApiProperty()
   footer: string;
 
-  @ApiProperty()
+  @ApiProperty({ default: 1 })
   headerType: number;
 
   @ApiProperty({ type: [ButtonsData] })
@@ -179,7 +181,7 @@ class ButtonsMessageWithImageContent {
   @ApiProperty()
   footerText: string;
 
-  @ApiProperty()
+  @ApiProperty({ default: 4 })
   headerType: number;
 
   @ApiProperty()
@@ -188,8 +190,8 @@ class ButtonsMessageWithImageContent {
   @ApiProperty()
   mimeType: string;
 
-  @ApiProperty()
-  mediaType: 'image';
+  @ApiProperty({ default: 'image' })
+  mediaType: string;
 
   @ApiProperty({ type: [ButtonsData] })
   buttons: ButtonsData[];
@@ -200,7 +202,7 @@ export class OutputButtonsMessageWithImage extends DefaultParameters {
   buttonsMessage: ButtonsMessageWithImageContent;
 }
 
-class UrlButton {
+class UrlButtonContent {
   @ApiProperty()
   displayText: string;
 
@@ -208,7 +210,15 @@ class UrlButton {
   url: string;
 }
 
-class CallButton {
+class UrlButton {
+  @ApiProperty({ required: true })
+  index: number;
+
+  @ApiProperty()
+  urlButton: UrlButtonContent;
+}
+
+class CallButtonContent {
   @ApiProperty()
   displayText: string;
 
@@ -216,25 +226,37 @@ class CallButton {
   phoneNumber: string;
 }
 
-class QuickReplyButton {
+class CallButton {
+  @ApiProperty({ required: true })
+  index: number;
+
+  @ApiProperty()
+  callButton: CallButtonContent;
+}
+
+class QuickReplyButtonContent {
   @ApiProperty()
   displayText: string;
 
   @ApiProperty()
   id: string;
 }
-
-class TemplateButtons {
-  @ApiProperty()
+class QuickReplyButton {
+  @ApiProperty({ required: true })
   index: number;
 
-  @ApiPropertyOptional()
+  @ApiProperty()
+  quickReplyButton: QuickReplyButtonContent;
+}
+
+export class TemplateButtons {
+  @ApiPropertyOptional({ required: false })
   urlButton?: UrlButton;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ required: false })
   callButton?: CallButton;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ required: false })
   quickReplyButton?: QuickReplyButton;
 }
 
@@ -245,8 +267,8 @@ class TemplateMessageContent {
   @ApiProperty()
   footer: string;
 
-  @ApiProperty({ type: [TemplateButtons] })
-  templateButtons: TemplateButtons[];
+  @ApiProperty()
+  templateButtons: TemplateButtons;
 }
 
 export class OutputTemplateMessage extends DefaultParameters {
@@ -264,20 +286,17 @@ class TemplateMessageWithImageContent {
   @ApiProperty()
   mediaUrl: string;
 
-  @ApiProperty()
-  mediaType: 'image';
+  @ApiProperty({ default: 'image' })
+  mediaType: string;
 
   @ApiProperty()
   mimeType: string;
 
-  @ApiProperty({ type: [TemplateButtons] })
-  templateButtons: TemplateButtons[];
+  @ApiProperty()
+  templateButtons: TemplateButtons;
 }
 
-export class OutputTemplateMessageWithImage {
-  @ApiProperty()
-  to: string;
-
+export class OutputTemplateMessageWithImage extends DefaultParameters {
   @ApiProperty()
   templateMessage: TemplateMessageWithImageContent;
 }
@@ -346,7 +365,7 @@ interface MessageKey {
 }
 
 export class UpdatePresence extends DefaultParameters {
-  @ApiProperty({ enum: PresenceTypes })
+  @ApiProperty({ enum: PresenceTypes, default: PresenceTypes.composing })
   presence: PresenceTypes;
 }
 
@@ -359,6 +378,7 @@ export class ReadingMessages extends DefaultParameters {
 }
 
 export interface MessageSent {
+  to: string;
   messageId: string;
   status: string;
   message:
@@ -373,5 +393,4 @@ export interface MessageSent {
     | TemplateMessageContent
     | TemplateMessageWithImageContent
     | ReactionMessageContent;
-  to: string;
 }

@@ -3,6 +3,8 @@ import makeWASocket, {
   AuthenticationState,
   DisconnectReason,
   fetchLatestBaileysVersion,
+  proto,
+  SocketConfig,
   useSingleFileAuthState,
 } from '@adiwajshing/baileys';
 import P from 'pino';
@@ -26,6 +28,7 @@ import {
   OutputContactMessage,
   OutputButtonsMessage,
   OutputTextMessage,
+  TemplateButtons,
 } from '@baileys/domain/entities/whatsapp/whatsapp.entity';
 import { WhatsappDataSource } from '@baileys/data/data_source/whatsapp/whatsapp.datasource';
 import { Boom } from '@hapi/boom';
@@ -37,6 +40,12 @@ import {
 
 @Injectable()
 export class WhatsappDatasourceImpl implements WhatsappDataSource {
+  // Socket config used to configure the WhatsApp socket
+  private socketConfig: Partial<SocketConfig> = {
+    printQRInTerminal: true,
+    logger: P({ level: 'silent' }),
+  };
+
   socket?: ReturnType<typeof makeWASocket>;
   connectionEntity: ConnectionEntity;
 
@@ -49,17 +58,58 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
     this.authState = useSingleFileAuthState('./auth_info_multi.json');
   }
 
+  createEventUniqueId(): string {
+    const unixTimestamp = Math.floor(new Date().getTime() / 1000);
+    const uniqueCode = (Math.floor(Math.random() * 100) + 100)
+      .toString()
+      .substring(1);
+
+    return `${new Date().getFullYear()}${unixTimestamp}${uniqueCode}`;
+  }
+
+  private createId(jid: string) {
+    if (jid.includes('@g.us') || jid.includes('@s.whatsapp.net')) {
+      return jid;
+    }
+
+    return jid.includes('-') ? `${jid}@g.us` : `${jid}@s.whatsapp.net`;
+  }
+
+  processTemplateButtons(
+    templateButtons: TemplateButtons,
+  ): Promise<proto.IHydratedTemplateButton[]> {
+    return new Promise((resolve, reject) => {
+      try {
+        let finalButtons: proto.IHydratedTemplateButton[] = [];
+
+        Object.keys(templateButtons).map((button) => {
+          finalButtons = [...finalButtons, templateButtons[button]];
+        });
+
+        return resolve(finalButtons);
+      } catch (error) {
+        return reject(error);
+      }
+    });
+  }
+
   private notifyHook(
     event: EventTypes,
     status: StatusTypes,
     qr?: string,
   ): Promise<VoidSuccess> {
     return new Promise((resolve, reject) => {
+      if (this.connectionEntity.disableWebhook) {
+        return resolve(new VoidSuccess({ success: true }));
+      }
+
       const body = {
         event,
         status,
         qr,
         instanceKey: this.connectionEntity.instanceKey,
+        eventId: this.createEventUniqueId(),
+        timestamp: new Date(),
       };
 
       this.hook
@@ -74,68 +124,51 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
     });
   }
 
-  private streamEvents(): Promise<VoidSuccess> {
-    return new Promise(async (resolve, reject) => {
-      try {
-        this.socket.ev.on('creds.update', this.authState.saveState);
-        this.socket.ev.on('connection.update', async (update) => {
-          const { connection, lastDisconnect } = update;
-          if (connection === ConnectionState.close) {
-            const shouldReconnect =
-              (lastDisconnect.error as Boom)?.output?.statusCode !==
-              DisconnectReason.loggedOut;
-            console.log(
-              'connection closed due to ',
-              lastDisconnect.error,
-              ', reconnecting ',
-              shouldReconnect,
-            );
-            // reconnect if not logged out
-            if (shouldReconnect) {
-              await this.notifyHook(
-                EventTypes.CONNECTION,
-                StatusTypes.RECONNECTING,
-                update.qr,
-              );
+  private streamEvents() {
+    this.socket.ev.on('creds.update', this.authState.saveState);
 
-              this.startConnection(this.connectionEntity)
-                .then((response) => {
-                  return resolve(new VoidSuccess({ success: true }));
-                })
-                .catch((e) => {
-                  return reject(e);
-                });
-            } else {
-              //aqui tu completa...
-              return resolve(
-                await this.notifyHook(
-                  EventTypes.CONNECTION,
-                  StatusTypes.LOGGED_OUT,
-                  null,
-                ),
-              );
-            }
-          } else if (connection === ConnectionState.open) {
-            console.log('opened connection');
-            return resolve(
-              await this.notifyHook(
-                EventTypes.CONNECTION,
-                StatusTypes.CONNECTED,
-                null,
-              ),
-            );
-          }
+    this.socket.ev.on('connection.update', async (update) => {
+      const { connection, lastDisconnect } = update;
 
-          if (update.qr)
-            await this.notifyHook(
-              EventTypes.CONNECTION,
-              StatusTypes.CONNECTING,
-              update.qr,
-            );
-        });
-      } catch (error) {
-        console.log(error);
-        return reject(error);
+      if (connection === ConnectionState.close) {
+        const shouldReconnect =
+          (lastDisconnect.error as Boom)?.output?.statusCode !==
+          DisconnectReason.loggedOut;
+
+        // reconnect if not logged out
+        if (shouldReconnect) {
+          await this.notifyHook(
+            EventTypes.CONNECTION,
+            StatusTypes.RECONNECTING,
+            update.qr,
+          );
+
+          return await this.startConnection(this.connectionEntity);
+        } else {
+          //aqui tu completa...
+          return await this.notifyHook(
+            EventTypes.CONNECTION,
+            StatusTypes.LOGGED_OUT,
+            null,
+          );
+        }
+
+        //
+      } else if (connection === ConnectionState.open) {
+        console.log('opened connection');
+        return await this.notifyHook(
+          EventTypes.CONNECTION,
+          StatusTypes.CONNECTED,
+          null,
+        );
+      }
+
+      if (update.qr) {
+        return await this.notifyHook(
+          EventTypes.CONNECTION,
+          StatusTypes.CONNECTING,
+          update.qr,
+        );
       }
     });
   }
@@ -146,14 +179,20 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
         this.connectionEntity ??= connection;
         const { version, isLatest } = await fetchLatestBaileysVersion();
 
+        this.socketConfig.auth = this.authState.state;
+
         this.socket = makeWASocket({
+          ...this.socketConfig,
           version,
-          logger: P({ level: 'trace' }),
-          printQRInTerminal: true,
-          auth: this.authState.state,
         });
 
-        return resolve(await this.streamEvents());
+        this.streamEvents();
+
+        return resolve(
+          new VoidSuccess({
+            success: true,
+          }),
+        );
       } catch (error) {
         console.log(error);
         return reject(error);
@@ -161,28 +200,24 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
     });
   }
 
-  private createId(jid: string) {
-    if (jid.includes('@g.us') || jid.includes('@s.whatsapp.net')) {
-      return jid;
-    }
-
-    return jid.includes('-') ? `${jid}@g.us` : `${jid}@s.whatsapp.net`;
-  }
-
   // Check if jid is registered on WhatsApp
   private isRegistered(jid: string): Promise<AccountInfo> {
     return new Promise<AccountInfo>(async (resolve, reject) => {
-      if (jid.includes('@g.us')) {
-        return { exists: true, jid };
+      try {
+        if (jid.includes('@g.us')) {
+          return { exists: true, jid };
+        }
+
+        const [result] = await this.socket?.onWhatsApp(this.createId(jid));
+
+        if (result) {
+          return resolve(result);
+        }
+
+        return reject('Number not registered on WhatsApp');
+      } catch (error) {
+        return reject('Instance not connected or an unknow error ocurred.');
       }
-
-      const [result] = await this.socket?.onWhatsApp(this.createId(jid));
-
-      if (result) {
-        return resolve(result);
-      }
-
-      return reject('Number not registered on WhatsApp');
     });
   }
 
@@ -381,10 +416,14 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
       try {
         const { jid } = await this.isRegistered(message.to);
 
-        const response = await this.socket?.sendMessage(
-          jid,
-          message.templateMessage,
+        const templateButtons = await this.processTemplateButtons(
+          message.templateMessage.templateButtons,
         );
+
+        const response = await this.socket?.sendMessage(jid, {
+          ...message.templateMessage,
+          templateButtons,
+        });
 
         return resolve(
           new SentMessageSuccess({
@@ -503,13 +542,17 @@ export class WhatsappDatasourceImpl implements WhatsappDataSource {
       try {
         const { jid } = await this.isRegistered(message.to);
 
+        const templateButtons = await this.processTemplateButtons(
+          message.templateMessage.templateButtons,
+        );
+
         const data = {
           image: {
             url: message.templateMessage.mediaUrl,
           },
           footer: message.templateMessage.footer ?? '',
           caption: message.templateMessage.caption,
-          templateButtons: message.templateMessage.templateButtons,
+          templateButtons,
           mimetype: message.templateMessage.mimeType,
         };
 

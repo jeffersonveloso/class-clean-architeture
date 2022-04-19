@@ -1,4 +1,4 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, Query } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { WhatsappConnectUseCase } from '@baileys/domain/use_cases/whatsapp_connect.usecase';
 import {
@@ -77,6 +77,7 @@ export class WhatsappController {
     summary: 'Envia uma mensagem utilizando a sessão.',
   })
   async sendTextMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputTextMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendTextMessageUseCase.call(body);
@@ -93,6 +94,7 @@ export class WhatsappController {
     summary: 'Envia uma mensagem de resposta utilizando a sessão.',
   })
   async sendReplyMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputReplyMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendReplyMessageUseCase.call(body);
@@ -109,6 +111,7 @@ export class WhatsappController {
     summary: 'Menciona um usuário em uma conversa utilizando a sessão.',
   })
   async sendMentionsMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputMentionsMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendMentionsMessageUseCase.call(body);
@@ -125,6 +128,7 @@ export class WhatsappController {
     summary: 'Enviar um contato em uma conversa utilizando a sessão.',
   })
   async sendContactMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputContactMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendContactMessageUseCase.call(body);
@@ -141,6 +145,7 @@ export class WhatsappController {
     summary: 'Enviar uma localização em uma conversa utilizando a sessão.',
   })
   async sendLocationMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputLocationMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendLocationMessageUseCase.call(body);
@@ -157,6 +162,7 @@ export class WhatsappController {
     summary: 'Enviar botões em uma conversa utilizando a sessão.',
   })
   async sendButtonsMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputButtonsMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendButtonsMessageUseCase.call(body);
@@ -173,6 +179,7 @@ export class WhatsappController {
     summary: 'Envia botões personalizados em uma conversa utilizando a sessão.',
   })
   async sendTemplateMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputTemplateMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendTemplateMessageUseCase.call(body);
@@ -190,6 +197,7 @@ export class WhatsappController {
       'Envia uma reação para uma determinada mensagem em uma conversa utilizando a sessão.',
   })
   async sendReactionMessage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputReactionMessage,
   ): Promise<SentMessageSuccess> {
     return this.sendReactionMessageUseCase.call(body);
@@ -207,6 +215,7 @@ export class WhatsappController {
       'Envia uma botões e uma imagem em uma conversa utilizando a sessão.',
   })
   async sendButtonsMessageWithImage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputButtonsMessageWithImage,
   ): Promise<SentMessageSuccess> {
     return this.sendButtonsMessageWithImageUseCase.call(body);
@@ -224,6 +233,7 @@ export class WhatsappController {
       'Envia uma botões personalizados e uma imagem em uma conversa utilizando a sessão.',
   })
   async sendTemplateMessageWithImage(
+    @Query('instanceKey') instanceKey: string,
     @Body() body: OutputTemplateMessageWithImage,
   ): Promise<SentMessageSuccess> {
     return this.sendTemplateMessageWithImageUseCase.call(body);
@@ -239,7 +249,10 @@ export class WhatsappController {
   @ApiOperation({
     summary: 'Atualiza o estado em uma conversa utilizando a sessão.',
   })
-  async updatePresence(@Body() body: UpdatePresence): Promise<VoidSuccess> {
+  async updatePresence(
+    @Query('instanceKey') instanceKey: string,
+    @Body() body: UpdatePresence,
+  ): Promise<VoidSuccess> {
     return this.updatePresenceUseCase.call(body);
   }
 
@@ -253,7 +266,10 @@ export class WhatsappController {
   @ApiOperation({
     summary: 'Marca mensagens como lida em uma conversa utilizando a sessão.',
   })
-  async readingMessages(@Body() body: ReadingMessages): Promise<VoidSuccess> {
+  async readingMessages(
+    @Query('instanceKey') instanceKey: string,
+    @Body() body: ReadingMessages,
+  ): Promise<VoidSuccess> {
     return this.readingMessagesUseCase.call(body);
   }
 }
