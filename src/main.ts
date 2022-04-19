@@ -11,16 +11,14 @@ server.use(express.urlencoded({ extended: false }));
 async function bootstrap(expressInstance: express.Express) {
   const app = await NestFactory.create(
     AppModule,
-    new ExpressAdapter(expressInstance)
+    new ExpressAdapter(expressInstance),
   );
 
   app.setGlobalPrefix('api');
 
   const options = new DocumentBuilder()
     .setTitle('Baileys Server')
-    .setDescription(
-      'Backend Baileys'
-    )
+    .setDescription('Backend Baileys')
     .setVersion('1.0')
     .build();
 

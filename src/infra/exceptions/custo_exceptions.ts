@@ -1,3 +1,3 @@
-import { HttpException } from "@nestjs/common";
+import { HttpException } from '@nestjs/common';
 
 export class WhatsAppError extends HttpException {}

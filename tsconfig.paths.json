@@ -2,7 +2,7 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@bailyes/*": ["src/*"]
+      "@baileys/*": ["src/*"]
     }
   }
 }

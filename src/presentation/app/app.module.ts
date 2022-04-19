@@ -1,8 +1,8 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { WhatsappModule } from "@bailyes/presentation/module/whatsapp/whatsapp.module";
-import { HttpModule } from "@nestjs/axios";
+import { WhatsappModule } from '@baileys/presentation/module/whatsapp/whatsapp.module';
+import { HttpModule } from '@nestjs/axios';
 
 @Module({
   imports: [
